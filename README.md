@@ -4,6 +4,8 @@ A multi-agent decision skill for Claude Code. Hit it with an architecture call, 
 
 Built for solo dev workflow. No infra.
 
+> 中文版 / Chinese version: **[SKILL.zh.md](./SKILL.zh.md)**
+
 ## What it does
 
 When you face a real architecture decision — system design, data structure choice, rewrite-vs-incremental, which DB/queue/cache to pick — Council retrieves the domain's canonical patterns and master framings, runs an adversarial cross-model check, and gives you a recommendation with explicit confidence tiers.
@@ -22,7 +24,7 @@ Each decision is two files:
 
 Cross-decision learnings get appended to a single `code_playbook.md` instead of per-decision files — they need to be read every session, so they live separately from per-decision state.
 
-See `SKILL.md` for the full schema, output rules, and red-team flow.
+See [`SKILL.md`](./SKILL.md) for the full schema, output rules, and red-team flow.
 
 ## Why two files instead of six
 

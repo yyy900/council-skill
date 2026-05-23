@@ -1,25 +1,31 @@
 ---
 name: council
 description: |
-  代查前辈智慧的架构顾问 — 面对程序设计 / 架构选择 / coding 决策时，自动
-  检索这个问题域的 canonical 架构 + 大师 framing + 实战 post-mortem，让你
-  站在巨人肩膀上做选择。配 codex 红队（异源模型）防 Claude 自信幻觉。
+  An architecture advisor that retrieves prior wisdom on your behalf — when
+  you face a program design / architecture choice / coding decision, this
+  skill auto-retrieves the canonical architectures, master framings, and
+  real-world post-mortems for that problem domain, so you can stand on
+  giants' shoulders when making the call. Paired with a Codex red team
+  (different model distribution) to prevent Claude's self-confident
+  hallucinations.
 
-  解决的问题：程序员经验半径有限，不可能见过所有好设计。后端不一定知道
-  分布式 patterns，单机不一定知道 ML pipeline。这个 skill 是你的领域智识
-  入口，让 AI 替你检索领域共识 + 援引真实来源。
+  The problem it solves: any single programmer's experience radius is
+  limited. A backend dev hasn't necessarily seen distributed patterns; a
+  single-machine dev hasn't necessarily seen ML pipelines. This skill is
+  your domain-knowledge entrypoint — it lets AI retrieve the field's
+  consensus for you and cite real sources.
 
-  调用时机：
-  - 架构选择 / 系统设计 / 数据结构选型
-  - "这类问题领域 best practice 是什么"
-  - 性能 / 安全 / 可维护性 trade-off
-  - rewrite vs 渐进 / 拆 vs 不拆 / 选什么数据库/队列/缓存
+  When to call:
+  - Architecture choice / system design / data structure selection
+  - "What's the best practice in this problem domain?"
+  - Performance / security / maintainability tradeoffs
+  - Rewrite vs incremental / split vs unify / pick which DB/queue/cache
 
-  不调用时机：
-  - 简单 bug / 实现细节 → 直接写
-  - 产品形态 / 商业模式 → 用 office-hours
-  - UI/UX → 用 design-* skills
-  - PR / 单文件 sanity check → 用 /review 或 /codex
+  When NOT to call:
+  - Simple bugs / implementation details → just write it
+  - Product form / business model → use office-hours
+  - UI/UX → use design-* skills
+  - PR / single-file sanity check → use /review or /codex
 allowed-tools:
   - Read
   - Write
@@ -33,224 +39,224 @@ allowed-tools:
 
 # Council
 
-## 核心信念
+## Core belief
 
-> 你是站在巨人肩膀上写代码。这个 skill 替你找到该站在谁的肩膀上。
+> You're writing code while standing on giants' shoulders. This skill finds which giants you should stand on.
 
-不是 Claude 表演大师。是 Claude 替你**检索领域共识 + 援引真实来源**。
+Not Claude impersonating a master. Claude **retrieving the field's consensus and citing real sources on your behalf**.
 
 ---
 
-## 三档置信度（最重要的守则）
+## Three confidence tiers (the most important rule)
 
-任何技术 claim 必须显式标一档：
+Every technical claim must be tagged with one tier:
 
-| 档 | 何时使用 | 必须能说出 | 验证 |
+| Tier | When to use | Must be able to cite | Verification |
 |---|---|---|---|
-| **🟢 Canonical** | 领域公认 | **可验证 URL**：论文 DOI / GitHub repo / 公司技术博客 / 知名 talk 录像 | URL 由红队 fact-check pass 批量 verify（不在主流程 inline）|
-| **🟡 Common** | 社区常用，非唯一 | **多个采用者**或**主流框架默认** | 至少能说 2 个采用者，无 URL 也接受 |
-| **🔴 Claude 推理** | 无领域共识 | **明确声明**"基于第一性原理推理，非领域 canonical" | 无需来源 |
+| **🟢 Canonical** | Field-recognized | **Verifiable URL**: paper DOI / GitHub repo / company eng blog / known talk recording | URLs batch-verified by the red team fact-check pass (not inline in main flow) |
+| **🟡 Common** | Community-common, not unique | **Multiple adopters** or **mainstream framework default** | At least 2 named adopters; URL not required |
+| **🔴 Claude inference** | No domain consensus | **Explicitly state**: "based on first-principles reasoning, not domain canon" | No source required |
 
-**严禁混档**。把 🔴 包装成 🟢 是最致命的失败 — 信用一旦塌，整个 skill 报废。
-找不到 🟢 / 🟡 → 老老实实标 🔴，比假冒 canonical 强 1000 倍。
+**Never mix tiers.** Dressing 🔴 up as 🟢 is the most lethal failure mode — once trust collapses, the whole skill is dead.
+If you can't find 🟢 / 🟡 → honestly mark it 🔴. That's 1000× better than faking canonical.
 
-**🟢 URL 验证由红队 fact-check pass 做**：主流程不 inline verify（太慢）。写 🟢 时必须配 URL，verify 集中在 Step 6.5 红队批量跑 — 详见 SKILL.md "红队" 段 + `prompts/codex_red_team.md` 子任务 A。Claude 训练分布 ≠ verified truth，这道关不能省。
+**🟢 URLs are verified by the red team fact-check pass**: main flow doesn't inline-verify (too slow). When you write 🟢 you must include a URL; verification happens centrally in the red team — see "Red team" section + `prompts/codex_red_team.md` subtask A. Claude's training distribution ≠ verified truth; this gate cannot be skipped.
 
 ---
 
-## 三个工作模式
+## Three working modes
 
-| 模式 | 触发 | 流程文件 |
+| Mode | Trigger | Flow file |
 |---|---|---|
-| OPEN | 新问题 / 新决策 | `prompts/open.md` |
-| CONTINUE | 已有决策续会、增信息 | `prompts/continue.md` |
-| REVIEW | 实践后回看（用户主动，非定时） | `prompts/review.md` |
+| OPEN | New problem / new decision | `prompts/open.md` |
+| CONTINUE | Existing decision, adding info | `prompts/continue.md` |
+| REVIEW | Post-implementation look-back (user-triggered, not scheduled) | `prompts/review.md` |
 
-状态简化：`open → done`。重大翻盘走 reversed。
+State simplified: `open → done`. Major reversals go through `reversed`.
 
 ---
 
-## 决策对象
+## Decision object
 
-路径（保持原约定）：
-- 默认（项目）：`<project>/.claude/decisions/<id>/`
-- 全局：`~/.claude/decisions/<id>/`，原位置留 symlink
-- ID：`YYYY-MM-DD_<slug>`
+Path (preserves the original convention):
+- Default (project-scoped): `<project>/.claude/decisions/<id>/`
+- Global: `~/.claude/decisions/<id>/`, with a symlink left in the original location
+- ID: `YYYY-MM-DD_<slug>`
 
-每个决策目录（2 文件，必要时加 outcome）：
+Each decision directory (2 files, optionally + outcome):
 
 ```
-decision.md      一站式：frontmatter + 问题 + 候选（含 confidence/source/trap）
-                 + trade-off + 推荐（详细计划） + 不推荐 + reading list
+decision.md      One-stop: frontmatter + problem + candidates (with confidence/source/trap)
+                 + tradeoffs + recommendation (detailed plan) + non-recommended + reading list
                  + kill criteria
-council-log.md   过程审计：problem class 确认、反智囊团 4 问、codex 红队、
-                 主席裁决路径（含被 supersede 的早期裁决）
-outcome.md       实践后回填，可选
+council-log.md   Process audit: problem-class confirmation, anti-council 4 questions,
+                 codex red team, chairman's ruling path (including superseded early rulings)
+outcome.md       Filled in after implementation, optional
 ```
 
-**不再独立成文件的（折进 decision.md）**：canonical_patterns / master_framings / tradeoff_table / reading_list / kill-criteria。
+**No longer separate files (folded into decision.md)**: canonical_patterns / master_framings / tradeoff_table / reading_list / kill-criteria.
 
-**learning_notes 不写决策目录**：直接 append 到 `~/.claude/projects/<slug>/memory/code_playbook.md`（单一来源，跨决策累积）。
+**learning_notes don't go in the decision directory**: appended directly to `~/.claude/projects/<slug>/memory/code_playbook.md` (single source, accumulates across decisions).
 
-frontmatter schema（精简到 6 字段）：
+frontmatter schema (slimmed to 6 fields):
 
 ```yaml
 ---
 id: 2026-04-30_ai-architecture
-title: <人类可读>
+title: <human-readable>
 status: open | done | reversed
 problem_class: <e.g. "low-latency multimodal pipeline architecture">
-topics: [关键词列表，用于 surface 命中]
+topics: [keyword list, used for surface matching]
 red_team:
-  codex: true   # 新定位下默认 true（异源对照 canonical claim）
+  codex: true   # default true under new positioning (cross-source check on canonical claims)
 ---
 ```
 
-**已删字段**（无消费 / 自描述 / 重复）：`visibility`（路径自说明 project vs global）、`opened`（id 前缀即日期）、`recommendation_confidence`（body 用 🟢/🟡/🔴 已表达）、`chosen_pattern`（无 query 工具消费）、`false_match_count`（设计了但无 enforcement）。
+**Removed fields** (no consumer / self-describing / redundant): `visibility` (path tells you project vs global), `opened` (id prefix already encodes date), `recommendation_confidence` (body's 🟢/🟡/🔴 already expresses this), `chosen_pattern` (no query tool consumes it), `false_match_count` (designed but never enforced).
 
-老 decision.md 不需要迁移 — CONTINUE / REVIEW 只消费 status / topics / red_team.codex / problem_class，删字段不 break。
+Old `decision.md` files don't need migration — CONTINUE / REVIEW only consume status / topics / red_team.codex / problem_class, and removed fields don't break.
 
 ---
 
-## 学习累积（单一文件，两段）
+## Learning accumulation (single file, two sections)
 
-`~/.claude/projects/<slug>/memory/code_playbook.md` — 跨决策唯一学习文件。原 `user_decision_profile.md` 已合并入此（14 天 stale 表明独立成文件价值低于 schema 成本）。
+`~/.claude/projects/<slug>/memory/code_playbook.md` — single cross-decision learning file. The old `user_decision_profile.md` is now merged in (14 days of staleness showed standalone-file value was lower than the schema cost).
 
-### Section A — 用户决策模式（顶部，每次 OPEN 必读）
+### Section A — User decision patterns (top of file, read on every OPEN)
 
-跨决策积累的用户判断模式 / 反复盲区 / 有效视角。schema：
+User judgment patterns / repeated blind spots / effective angles, accumulated across decisions. Schema:
 
 ```markdown
-## 用户决策模式（截至 YYYY-MM-DD）
+## User decision patterns (as of YYYY-MM-DD)
 
-### 决策列表
-| ID | Title | Status | 推荐方向 | Outcome |
+### Decision list
+| ID | Title | Status | Recommended direction | Outcome |
 
-### 反复出现的盲区
-（数据点 < 3 次时不轻易归纳）
+### Repeated blind spots
+(Don't generalize when data points < 3)
 
-### 对此用户特别有效的视角
-- 例：steelman 比辩护更有效 — 默认假设用户质疑成立 + 把方案升级吸收它
+### Angles effective with this user
+- e.g. steelman beats defense — default-assume user pushback is valid + upgrade the proposal to absorb it
 
-### 此用户从不接受的建议类型
+### Recommendations this user never accepts
 
-### 决策模式速记
-- YYYY-MM-DD：备注
+### Decision pattern shorthand
+- YYYY-MM-DD: note
 ```
 
-### Section B — 决策技术 playbook（每次召开后追加）
+### Section B — Decision technique playbook (appended after each session)
 
 ```
 ## YYYY-MM-DD — [problem class]
 
-**决策 ID**：YYYY-MM-DD_<slug>
-**主席推荐**：[pattern] (置信度 🟢/🟡/🔴)
-**关键 trade-off**：[一句话核心]
-**Outcome**：pending（实践后回填）
-**下次同问题域应首先想到**：[pattern 名]
+**Decision ID**: YYYY-MM-DD_<slug>
+**Chairman's recommendation**: [pattern] (confidence 🟢/🟡/🔴)
+**Key tradeoff**: [one-line core]
+**Outcome**: pending (filled in after implementation)
+**Next time this problem class comes up, think of first**: [pattern name]
 ```
 
-下次遇到**同 problem class** 召开时**必读 Section A + Section B 同类问题** — 你的个人技术 playbook + 用户决策风格档案。
+Next time the **same problem class** comes up, **read Section A + Section B entries for the same problem** — your personal technical playbook + user decision-style file.
 
 ---
 
-## 反幻觉硬规则
+## Anti-hallucination hard rules
 
-1. 🟢 Canonical 必须配**可验证 URL**（论文 DOI / GitHub repo / 公司技术博客 / 知名 talk 录像）— 不仅是来源名。URL verify 在红队 fact-check pass 集中做，主流程不 inline
-2. 大师 framing 必须有具体出处（哪本书的哪一段、哪个 talk、哪条 commit msg、哪封邮件列表）+ 可定位的 URL 或 ISBN
-3. 不能说"X 一定会这么想"
-4. 不能编 quote、不能编 URL — 红队 fact-check 是 forcing function
-5. 模糊印象的人物 / pattern → 退档到 🔴，明确说
+1. 🟢 Canonical must come with a **verifiable URL** (paper DOI / GitHub repo / company eng blog / known talk recording) — not just a source name. URL verification happens centrally in the red team fact-check pass; main flow does not inline-verify
+2. Master framings must have a specific source (which book's which chapter, which talk, which commit message, which mailing list email) + a locatable URL or ISBN
+3. Don't say "X would definitely think this"
+4. Don't invent quotes; don't invent URLs — the red team fact-check is the forcing function
+5. Hazy-memory people / patterns → demote to 🔴 and say so explicitly
 
-违反任一 → 输出无效，重写。
-
----
-
-## 引用 freshness 规则
-
-智囊团的价值是**经过实践验证的当代共识**，不是考古。
-
-- **首选**：近 5 年仍在主流框架/repo 默认采用的（Werkzeug current docs / Caffeine / axum / FastAPI / Phoenix 等）
-- **可引**：真正 timeless 的基础概念（actor model、FSM、hash table、CSP、event loop — 这类即使源头 30+ 年也是现役通货）
-- **慎引**：2010 前的 specific implementation pattern，**除非**它现在还是该领域 reference impl 或被现代主流直接继承
-- **禁引**：模糊记忆中"应该有过"的老论文 / 老书章节，没法说出现在哪个系统还在用 → 退档 🔴 或删掉
-
-判断点：能不能说出**今年还有人在 production 用这个**？说不出 → 不要列。
+Violate any → output invalid, rewrite.
 
 ---
 
-## 输出质量硬规则（字字千钧）
+## Citation freshness rule
 
-智囊团的价值前提是**密度**。用户付出仪式感（明确触发 + 等待 + 阅读），换的不是普通技术 chat。每个字必须发挥作用。
+The council's value is **contemporary, practice-validated consensus**, not archaeology.
 
-### 8 条具体规则
+- **Prefer**: things still adopted as default in mainstream frameworks/repos within the last 5 years (Werkzeug current docs / Caffeine / axum / FastAPI / Phoenix etc.)
+- **Acceptable**: genuinely timeless foundational concepts (actor model, FSM, hash table, CSP, event loop — still in active use even if 30+ years old)
+- **Cautious**: pre-2010 specific implementation patterns, **unless** they're still the field's reference implementation or directly inherited by modern mainstream systems
+- **Forbidden**: hazy-memory "there must have been" old papers / book chapters where you can't name a system still using them in production → demote to 🔴 or delete
 
-1. **删除测试**：每段问"删掉这段，决策会不会变？" — 不变 → 删。
-2. **禁止 framing / 过渡 / 总结**：不写"以下分三块"、"先说结论"、"综上"、"总而言之"、"针对你这次的具体建议"。直接给判断。
-3. **禁止对称 padding**：某候选只有 1 句话能说，就 1 句；不为了表格美观或对称凑废话。
-4. **禁止 hedging 套话**：不写"取决于具体场景"、"两边都有道理"、"你可以根据需要选择"、"可能/也许"。主席裁决 = 裁决，不是免责声明。
-5. **canonical pattern 描述 ≤ 3 行**：1 句核心 idea + 1 句来源 + 1 句 trap。读完能直接判断要不要深挖。
-6. **trade-off 单元格只填决策性事实**：数字 / 是/否 / 一句概括。"性能较好"是废话，"radix 查找 O(prefix)、~10 路由意义不大"是事实。
-7. **主席裁决 = 1 段 + 1 置信度 + 1 具体下一步**。不要"权衡之下"开头的废话段。
-8. **不无中生有找事改**：reviewing 候选 / 文件 / 配置时，先按"删了/改了能解决什么真问题"判断 — 解决不了真问题 → 不动，"无 actionable 改动"是合法输出。不为产出而产出。
-
-### 反例（实测被用户标过废话的）
-
-- "针对你这次重写的具体建议" 这种 framing 标题 → 直接说建议
-- "三个观点指向同一个重构" 之后又重述一遍重构 → 已经说完了，删
-- 解释 H1 时把 Werkzeug 怎么演化讲一遍 → 用户问 canonical 不是听历史
-
-违反任一 → 输出无效，重写。
+Test: can you name **something in production this year still using it**? If not — don't list it.
 
 ---
 
-## 红队（事实校验 + Codex 异源对照）
+## Output quality hard rules (every word earns its place)
 
-执行 `prompts/codex_red_team.md`（包含两子任务，一道 prompt 跑完）。
+The council's value rests on **density**. The user pays a ritual cost (explicit trigger + wait + read) for something that's not ordinary tech chat. Every word must do work.
 
-### 子任务 A — 事实校验（Claude 自己跑，必跑）
+### 8 specific rules
 
-抽出本次产出所有 🟢 + URL → 批量 WebFetch → 200 才放行；4xx / timeout / dead → 退档 🟡 或删，council-log.md 标 "fact-check failed: <url>"。
+1. **Deletion test**: ask each paragraph "if I cut this, does the decision change?" — if no → delete.
+2. **No framing / transitions / summaries**: don't write "below in three parts," "first the conclusion," "in summary," "all things considered," "specifically for your situation." Give the ruling directly.
+3. **No symmetric padding**: if a candidate only has one sentence's worth of substance, write one sentence. Don't pad to make the table look balanced.
+4. **No hedging clichés**: don't write "depends on the specific scenario," "both sides have merit," "you can choose based on need," "possibly/maybe." Chairman's ruling = ruling, not a disclaimer.
+5. **Canonical pattern description ≤ 3 lines**: 1 sentence core idea + 1 sentence source + 1 sentence trap. After reading it, the user can judge whether to dig deeper.
+6. **Tradeoff table cells contain only decision-bearing facts**: numbers / yes-no / one-line summary. "Performs better" is filler; "radix lookup is O(prefix), ~10 routes is meaningless" is fact.
+7. **Chairman's ruling = 1 paragraph + 1 confidence tier + 1 specific next step**. No "weighing the tradeoffs..." opener.
+8. **No manufactured changes**: when reviewing candidates / files / configs, first judge by "does deleting/changing this solve a real problem?" — if not → don't touch. "No actionable changes" is a valid output. Don't produce for the sake of producing.
 
-**为什么集中在红队做**：主流程每个 🟢 inline verify 太慢。事实校验是给来源兜底，不是 Claude 实时检索新信息，集中跑一次 forcing function 够了。
+### Counter-examples (filler the user has flagged in practice)
 
-### 子任务 B — Codex 异源对照（开关控制，`red_team.codex == true`）
+- "Specifically for your rewrite this time" as a framing header → just give the recommendation
+- "Three viewpoints converge on the same refactor" then restating the refactor → already said it, cut
+- Explaining H1 by recounting Werkzeug's evolution → user asked for canon, not history
 
-- Claude 标 🟢 的，codex 没听过 → 大概率 confabulate
-- Claude 漏掉的明显 canonical 选项（codex 知道但 Claude 没列）
-- 不同模型训练分布的盲区互补
-
-**默认 true**，除非赌注极小（赌注小时事实校验仍跑，Codex 跳过）。
-
----
-
-## Topic-relevant Surface
-
-用户第一条消息后扫两个位置的 decision.md，对 status 是 open 的：
-- grep 用户消息和当前文件路径是否命中 topics
-- 命中 → surface 提示
-- 不命中 → 静默
-
-**严禁**进入项目自动列、超期强提醒。
+Violate any → output invalid, rewrite.
 
 ---
 
-## 边界 — 这个 skill 不做什么
+## Red team (fact-check + Codex cross-source)
 
-- 产品形态 / 商业模式 → `/office-hours`
-- UI/UX 视觉 → `/design-*` skills
-- 实现细节 / 单文件审查 → `/codex consult`
-- PR diff 级 review → `/review` 或 `/codex review`
-- 安全审计 → `/security-review` 或 `/cso`
+Run `prompts/codex_red_team.md` (two subtasks in one prompt).
 
-如果用户的问题 ≥ 50% 落在以上其中之一，**主动建议分流**而不是硬接。
+### Subtask A — Fact-check (Claude self-run, always runs)
+
+Extract every 🟢 + URL from this output → batch WebFetch → only 200 passes; 4xx / timeout / dead → demote to 🟡 or delete, mark "fact-check failed: <url>" in council-log.md.
+
+**Why centralized in red team**: inline-verifying every 🟢 in the main flow is too slow. Fact-check is a safety net for sources, not real-time retrieval of new info — running it once as a forcing function is enough.
+
+### Subtask B — Codex cross-source (toggle-controlled, `red_team.codex == true`)
+
+- Claude marked 🟢, Codex never heard of it → likely confabulation
+- Canonical options Claude missed (Codex knows, Claude didn't list)
+- Different model training distributions cover each other's blind spots
+
+**Default true**, unless the stakes are tiny (fact-check still runs; Codex skips).
 
 ---
 
-## 命令
+## Topic-relevant surface
 
-- `/decisions list` — 列当前项目所有 decision
-- `/decisions list global` — 列全局
-- `/decisions show <id>` — 完整展示
-- `/decisions promote <id>` — 项目 → 全局（生成 symlink）
-- `/decisions review <id>` — 手动触发回看
+After the user's first message, scan decision.md in both locations for any with status `open`:
+- grep user message and current file path for topic matches
+- match → surface a hint
+- no match → silent
+
+**Strictly forbidden**: auto-listing pending on project entry, over-N-days strong reminders.
+
+---
+
+## Boundary — what this skill does NOT do
+
+- Product form / business model → `/office-hours`
+- UI/UX visuals → `/design-*` skills
+- Implementation details / single-file review → `/codex consult`
+- PR diff-level review → `/review` or `/codex review`
+- Security audit → `/security-review` or `/cso`
+
+If ≥ 50% of the user's question falls under one of these, **proactively suggest the right skill** instead of forcing it.
+
+---
+
+## Commands
+
+- `/decisions list` — list all decisions in current project
+- `/decisions list global` — list global
+- `/decisions show <id>` — show full detail
+- `/decisions promote <id>` — project → global (creates symlink)
+- `/decisions review <id>` — manually trigger review
