@@ -74,16 +74,18 @@ red_team:
 
 ### When NOT to enable Section B
 
-- Small-stakes decision (< 1 week of effort) → cost-wasteful
-- You already strongly lean toward one direction → codex pushback can't move you → waste
-- All assumptions are pending (benchmark not run, co-founder not aligned) → challenging too early, go gather data first
+- Pure-code decision with no external blast and no production data (default for solo vibe-coding — AI rewrites code in hours, code-level reversibility is cheap)
+- All key assumptions still pending verification (benchmark not run, data not in, co-founder not aligned) → challenging too early, go gather data first
 
 ### When to enable Section B
 
-- Irreversible decision (rolling back has huge cost)
+- Decision has **external blast** (public commitment / users / partners / hire — anything affecting people outside you)
+- Decision touches **production data** that's already been generated
+- Decision is **load-bearing** (≥3 downstream decisions will build on it)
 - You and co-founder have strong internal consensus → easy group-think, needs external view
 - Council is internally highly consistent → suspicious, needs cross-source challenge
 - Involves major resource commitment (money / time / team energy)
+- **User strongly inclined toward one direction → this is precisely when red team matters most.** Council's purpose is to challenge, not validate. Strong conviction is not a reason to skip — it's a reason to run.
 
 ### Step B1 — Assemble minimal input for codex
 

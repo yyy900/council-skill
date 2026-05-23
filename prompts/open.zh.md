@@ -19,30 +19,39 @@ playbook 合二为一：
 
 如果 playbook 不存在：跳过，本次结束后必须创建（Step 11）。
 
-## Step 0.5 — 赌注判断（early-exit gate）
+## Step 0.5 — 模式分发（inline 是默认）
 
-不是所有问题都值得开 council。3 个 quick check：
+默认 council 走 **inline 模式**：1 句 canonical 援引 + 1 句陷阱 + 继续。Heavy 模式（Step 1-11）需显式触发。
 
-1. **赌注**：错了能用 < 1 天回退吗？
-2. **领域**：是简单 bug / 实现细节 / 一行选择吗？
-3. **共识**：领域内是否已有一个明显的 default（90% 人都选它）？
+3 个判断走哪个模式：
 
-3 个 yes 中至少 2 个 → **直接 abort**，不进 Step 1-11。一句话推荐 + 一个 URL 验证过的来源 + 告诉用户为什么没召开。
+1. **外部 blast**：决策影响他人 / 公开承诺 / 用户已感知吗？
+2. **生产数据**：决策接触已经在 production 的数据吗？
+3. **累积锁定**：≥3 个未来决策会建立在它之上吗？
 
-abort 输出模板：
+任一"是" → heavy 模式（继续 Step 1-11）。全部"否" → inline 模式（直接走下面 inline 输出，不进 Step 1-11）。
 
-> 这问题不值得开 council：[赌注 / 领域 / 共识 — 命中哪条]。
-> 建议：[一句话推荐]。
-> 来源：[一个 WebFetch verified URL]。
-> 如果你坚持要 full council，再说"开会"。
+用户显式说"正式召开 council" / "formal council" / "open council" → 不管别的，走 heavy 模式。
 
-abort 不写 decision 对象，不更新 playbook。只在主对话里出。
+Step 0 playbook 显示同 problem class 上次 outcome 失败 → heavy 模式（值得重新走流程）。
 
-**不 abort 的边界**：
-- 不可逆决策（哪怕看起来小）
-- 多人协作 / 团队对齐 有价值
-- 用户主动说"开 council" / "正式召开"
-- Step 0 playbook 显示同 problem class 上次 outcome 是失败 — 这次值得重新走流程
+### Inline 模式输出
+
+```
+[inline canonical check]
+Choice: <1 句>
+Canonical: <pattern + 🟢/🟡/🔴 + URL（如适用）>
+Trap: <1 句>
+Going with: <选哪个 + 1 句理由>
+```
+
+3-5 行。不创建 decision 对象。不写 playbook。只出现在主对话。
+
+### v1 → v2 变更
+
+- 删除"回退 < 1 天"赌注测试 — vibe coding 时代代码回退时间不再有意义（AI 几小时重写）
+- 删除"是不是简单 bug"过滤 — 即使简单 bug 也受益于 inline canonical 查询
+- 从"early-exit gate"改名为"模式分发" — inline 是默认模式，不是 abort
 
 ## Step 1 — 识别问题阶段
 

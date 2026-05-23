@@ -1,25 +1,29 @@
 ---
 name: council
 description: |
-  代查前辈智慧的架构顾问 — 面对程序设计 / 架构选择 / coding 决策时，自动
-  检索这个问题域的 canonical 架构 + 大师 framing + 实战 post-mortem，让你
-  站在巨人肩膀上做选择。配 codex 红队（异源模型）防 Claude 自信幻觉。
+  前辈智慧顾问 — 当你面对某个问题域的不确定决策（coding 架构、增长策略、
+  商业定位、系统设计、内容定位），这个 skill 检索那个领域的 canonical
+  pattern + 大师 framing，配 Codex 异源红队防止单模型自信幻觉。
 
-  解决的问题：程序员经验半径有限，不可能见过所有好设计。后端不一定知道
-  分布式 patterns，单机不一定知道 ML pipeline。这个 skill 是你的领域智识
+  解决的问题：任何一个决策者经验半径都有限。这个 skill 是你的领域智识
   入口，让 AI 替你检索领域共识 + 援引真实来源。
 
   调用时机：
-  - 架构选择 / 系统设计 / 数据结构选型
-  - "这类问题领域 best practice 是什么"
+  - 架构选择 / 系统设计 / 数据结构选型（coding）
+  - "这类问题领域 best practice 是什么"（任何领域，不限编程）
   - 性能 / 安全 / 可维护性 trade-off
   - rewrite vs 渐进 / 拆 vs 不拆 / 选什么数据库/队列/缓存
+  - 非 coding：增长策略 / 商业定位 / 团队设计 / 内容定位
+    — 任何"这个问题域大家是怎么做的，我应该参考谁"
+
+  AI 自触发（轻量 inline 模式）：准备写代码 / 做选择前，**领域有已知前辈
+  经验** 且 **自信心 < 7/10** 时。对自己触发，不只对用户触发。
 
   不调用时机：
-  - 简单 bug / 实现细节 → 直接写
-  - 产品形态 / 商业模式 → 用 office-hours
-  - UI/UX → 用 design-* skills
-  - PR / 单文件 sanity check → 用 /review 或 /codex
+  - 实现细节**无架构选择**（纯语法 / 已知 API 调用）→ 直接写
+  - 产品形态 / 问题本身对不对 → /office-hours
+  - UI/UX → /design-* skills
+  - PR / 单文件 sanity → /review 或 /codex
 allowed-tools:
   - Read
   - Write
@@ -44,6 +48,33 @@ allowed-tools:
 ## 回复语言
 
 匹配用户输入的语言。中文输入 → 中文输出，英文输入 → 英文输出。单次回复内不混用语言。
+
+---
+
+## 默认深度：inline 模式
+
+默认情况下，council 走 **inline 模式**：1 句 canonical 援引 + 1 句陷阱 + 继续。不创建 decision 对象，不走仪式。
+
+**完整模式（heavy mode）**（完整 11 步 OPEN 流程 + decision.md + council-log.md + 红队）需要显式触发。任一条件即可：
+
+- **外部 blast**：决策影响他人 / 公开承诺 / 用户已感知（发布、招聘、品牌、合作）
+- **生产数据**：决策接触已生成的数据（schema migration / 用户产生的内容）
+- **累积锁定**：≥3 个下游决策会建立在它之上，改它要级联改下游
+- **用户显式调用**："正式召开 council" / "formal council" / "open council"
+
+vibe coding 时代，"代码改回去要多久"**已经不是有效标准** — AI 几小时重写代码。可逆性标准应该是 **非代码后果**：数据 / 公开承诺 / 后续决策 / 其他人。
+
+### Inline 模式输出模板
+
+```
+[inline canonical check]
+Choice: <正要做的选择，1 句>
+Canonical: <pattern 名 + 🟢/🟡/🔴 + 1 URL（如适用）>
+Trap: <这个 pattern 最常见的反咬场景，1 句>
+Going with: <选哪个 + 1 句理由>
+```
+
+3-5 行，然后继续写代码。不打断 vibe。
 
 ---
 
@@ -210,23 +241,41 @@ red_team:
 
 ---
 
-## 红队（事实校验 + Codex 异源对照）
+## 红队 toggle 规则
 
-执行 `prompts/codex_red_team.md`（包含两子任务，一道 prompt 跑完）。
+Council 用两段式红队抵抗单模型自信幻觉。
 
-### 子任务 A — 事实校验（Claude 自己跑，必跑）
+### Section A — 事实校验（始终运行）
 
-抽出本次产出所有 🟢 + URL → 批量 WebFetch → 200 才放行；4xx / timeout / dead → 退档 🟡 或删，council-log.md 标 "fact-check failed: <url>"。
+对每个 🟢 canonical 援引：批量 WebFetch verify URL。
+- 200 → 保留 🟢
+- 4xx / 5xx / timeout / dead → 退档 🟡 或删，council-log.md 标 "fact-check failed: <url>"
 
-**为什么集中在红队做**：主流程每个 🟢 inline verify 太慢。事实校验是给来源兜底，不是 Claude 实时检索新信息，集中跑一次 forcing function 够了。
+成本：~5-10 秒，无 LLM 成本。Heavy 模式始终运行。Inline 模式可选但推荐。
 
-### 子任务 B — Codex 异源对照（开关控制，`red_team.codex == true`）
+### Section B — Codex 异源对照（默认开启）
 
-- Claude 标 🟢 的，codex 没听过 → 大概率 confabulate
-- Claude 漏掉的明显 canonical 选项（codex 知道但 Claude 没列）
-- 不同模型训练分布的盲区互补
+独立 OpenAI 模型质疑主推荐。不同训练分布 = 真 diversity 来源。
 
-**默认 true**，除非赌注极小（赌注小时事实校验仍跑，Codex 跳过）。
+**Section B 跳过条件**（任一满足即跳过）：
+- 纯代码决策、无外部 blast、无 production 数据（solo vibe coding 默认情况）
+- 关键假设全未验证（benchmark 没跑 / 数据没到 / 合伙人没聊）→ 现在 challenge 太早，先去拿数据
+
+**Section B 强烈开启条件**（任一满足应开）：
+- 决策有外部 blast（公开 / 用户 / 合作方已受影响）
+- 决策接触 production 数据
+- 内部已强共识 → group-think 风险，需要外部视角
+- council 自己产出高度一致 → 可疑，需要异源质疑
+- **用户已强烈倾向某方向 → 这恰恰是红队最该开的时候。** Council 的存在是为了 challenge，不是 validate。用户强信念**不是**跳过红队的理由。
+
+成本参考：单次 Codex 调用 ~$0.01-0.05 + 几秒延迟。
+
+### 已删除的旧标准
+
+- ~~"改回去 > 1 周"~~ — AI 几小时重写代码；2026 vibe coding 时代，代码层面的"回退时间"不再是有效可逆性标准
+- ~~"用户已强烈倾向、反驳无效"~~ — 反 pattern。强信念恰恰是 challenge 最有价值的时候。Council 存在是为了 push back，不是迎合。
+
+完整两子任务执行流见 `prompts/codex_red_team.md`。
 
 ---
 

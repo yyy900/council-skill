@@ -1,31 +1,35 @@
 ---
 name: council
 description: |
-  An architecture advisor that retrieves prior wisdom on your behalf — when
-  you face a program design / architecture choice / coding decision, this
-  skill auto-retrieves the canonical architectures, master framings, and
-  real-world post-mortems for that problem domain, so you can stand on
-  giants' shoulders when making the call. Paired with a Codex red team
-  (different model distribution) to prevent Claude's self-confident
-  hallucinations.
+  Prior-art consultant — when you face a decision under domain uncertainty
+  (coding architecture, growth strategy, business positioning, system design,
+  content positioning), this skill retrieves the canonical patterns and
+  master framings for that problem class, paired with a Codex cross-model
+  red team to catch single-model overconfidence.
 
-  The problem it solves: any single programmer's experience radius is
-  limited. A backend dev hasn't necessarily seen distributed patterns; a
-  single-machine dev hasn't necessarily seen ML pipelines. This skill is
-  your domain-knowledge entrypoint — it lets AI retrieve the field's
-  consensus for you and cite real sources.
+  Solves: any single decision-maker's experience radius is limited. This
+  skill is your domain-knowledge entrypoint — it lets AI retrieve the
+  field's consensus on your behalf and cite real sources.
 
   When to call:
-  - Architecture choice / system design / data structure selection
-  - "What's the best practice in this problem domain?"
+  - Architecture choice / system design / data structure selection (coding)
+  - "What's the best practice in this problem domain?" (any domain)
   - Performance / security / maintainability tradeoffs
-  - Rewrite vs incremental / split vs unify / pick which DB/queue/cache
+  - Rewrite vs incremental / split vs unify / which DB/queue/cache
+  - Non-coding: growth strategy, business positioning, team design,
+    content positioning — anything "what does the field do, whose
+    shoulders should I stand on"
+
+  Proactively self-invoke (lightweight inline mode) when about to make a
+  choice in a domain with known prior art AND own confidence < 7/10.
+  Trigger on yourself, not just on user.
 
   When NOT to call:
-  - Simple bugs / implementation details → just write it
-  - Product form / business model → use office-hours
-  - UI/UX → use design-* skills
-  - PR / single-file sanity check → use /review or /codex
+  - Implementation detail with no architectural choice (pure syntax /
+    known API call) → just write it
+  - Product form / is-it-the-right-problem → /office-hours
+  - UI/UX → /design-* skills
+  - PR / single-file sanity → /review or /codex
 allowed-tools:
   - Read
   - Write
@@ -50,6 +54,33 @@ Not Claude impersonating a master. Claude **retrieving the field's consensus and
 ## Response language
 
 Match the user's input language. Chinese input → Chinese output. English input → English output. Don't mix languages within a single response.
+
+---
+
+## Default depth: inline mode
+
+By default, council runs in **inline mode**: 1-line canonical citation + 1-line trap + continue. No decision object, no ritual.
+
+**Heavy mode** (full 11-step OPEN flow + decision.md + council-log.md + red team) is opt-in. Triggers — any of:
+
+- **External blast**: decision affects others / public commitment / users already perceive (publish, hire, brand, partnership)
+- **Production data**: decision touches data that's already generated (schema migration, user-generated content)
+- **Load-bearing**: ≥3 downstream decisions will be built on this one, changing it cascades
+- **User explicit invoke**: user says "open council" / "formal council" / "正式召开"
+
+In the vibe-coding era, "code-to-revert" is no longer a valid criterion — AI rewrites code in hours. The reversibility test is about **non-code consequences**: data, public commitment, follow-up decisions, other people.
+
+### Inline mode output template
+
+```
+[inline canonical check]
+Choice: <the choice being made, 1 sentence>
+Canonical: <pattern name + 🟢/🟡/🔴 + 1 URL if applicable>
+Trap: <most common failure mode of this pattern, 1 sentence>
+Going with: <which option + 1-line reason>
+```
+
+3-5 lines, then continue writing code. Don't break flow.
 
 ---
 
@@ -216,23 +247,41 @@ Violate any → output invalid, rewrite.
 
 ---
 
-## Red team (fact-check + Codex cross-source)
+## Red team toggle rules
 
-Run `prompts/codex_red_team.md` (two subtasks in one prompt).
+Council pairs canonical retrieval with a two-part red team to catch single-model overconfidence.
 
-### Subtask A — Fact-check (Claude self-run, always runs)
+### Section A — Fact-check (always runs)
 
-Extract every 🟢 + URL from this output → batch WebFetch → only 200 passes; 4xx / timeout / dead → demote to 🟡 or delete, mark "fact-check failed: <url>" in council-log.md.
+For every 🟢 canonical claim: batch WebFetch verify the URL.
+- 200 → keep 🟢
+- 4xx / 5xx / timeout / dead → demote to 🟡 or delete, mark "fact-check failed: <url>" in council-log.md
 
-**Why centralized in red team**: inline-verifying every 🟢 in the main flow is too slow. Fact-check is a safety net for sources, not real-time retrieval of new info — running it once as a forcing function is enough.
+Cost: ~5-10 seconds, no LLM cost. Always runs in heavy mode. In inline mode, optional but recommended.
 
-### Subtask B — Codex cross-source (toggle-controlled, `red_team.codex == true`)
+### Section B — Codex cross-source (default on)
 
-- Claude marked 🟢, Codex never heard of it → likely confabulation
-- Canonical options Claude missed (Codex knows, Claude didn't list)
-- Different model training distributions cover each other's blind spots
+Independent OpenAI model challenge against main recommendation. Different training distribution = real diversity source.
 
-**Default true**, unless the stakes are tiny (fact-check still runs; Codex skips).
+**Skip Section B when ANY of**:
+- Pure-code decision with no external blast, no production data (default for solo vibe-coding)
+- Key assumptions all unverified (benchmark not run, data not in, co-founder not aligned) → challenging too early, go gather data first
+
+**Open Section B explicitly when ANY of**:
+- Decision has external blast (public / users / partners affected)
+- Decision touches production data
+- Internal strong consensus → group-think risk, needs external view
+- Council's own output is highly self-consistent → suspicious, needs cross-source challenge
+- **User strongly inclined toward one direction → THIS IS WHEN RED TEAM MATTERS MOST.** Council's purpose is to challenge, not validate. Don't let strong user conviction skip red team.
+
+Cost reference: Codex single call ~$0.01-0.05 + a few seconds latency.
+
+### Removed criteria (from prior versions)
+
+- ~~"Revert > 1 week"~~ — AI rewrites code in hours; time-to-revert is not a meaningful reversibility test in 2026
+- ~~"User already inclined, red team won't change mind"~~ — anti-pattern. Strong conviction is precisely when challenge has value. Council exists to push back, not defer.
+
+See `prompts/codex_red_team.md` for the full two-subtask execution flow.
 
 ---
 

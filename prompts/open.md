@@ -19,30 +19,39 @@ Playbook merges two sections:
 
 If playbook doesn't exist: skip, must create after this session (Step 11).
 
-## Step 0.5 — Stakes judgment (early-exit gate)
+## Step 0.5 — Mode dispatch (inline is default)
 
-Not every question is worth opening council. 3 quick checks:
+By default, council runs in **inline mode**: 1-line canonical citation + 1-line trap + continue. Heavy mode (Step 1-11 below) is opt-in.
 
-1. **Stakes**: if wrong, can it be rolled back in < 1 day?
-2. **Domain**: is it a simple bug / implementation detail / one-line choice?
-3. **Consensus**: does the domain already have an obvious default (90% pick it)?
+3 checks to determine mode:
 
-At least 2 of 3 "yes" → **abort directly**, do not enter Step 1-11. One-line recommendation + one URL-verified source + tell the user why council didn't convene.
+1. **External blast**: does this decision affect others, create public commitment, or change what users perceive?
+2. **Production data**: does this touch data that already exists in production?
+3. **Load-bearing**: are ≥3 future decisions going to be built on this one?
 
-Abort template:
+Any "yes" → heavy mode (continue to Step 1-11). All "no" → inline mode (skip to inline output below, do not enter Step 1-11).
 
-> Not worth opening council: [stakes / domain / consensus — which one matched].
-> Recommendation: [one-line].
-> Source: [one WebFetch-verified URL].
-> If you still want a full council, say "convene."
+User explicit "open council" / "formal council" / "正式召开" → heavy mode regardless.
 
-Abort does not write a decision object, does not update playbook. Only appears in main chat.
+Step 0 playbook shows same problem-class had a failed outcome last time → heavy mode (worth running the full process again).
 
-**Boundaries that don't abort**:
-- Irreversible decisions (even if they look small)
-- Multi-person collaboration / team alignment has value
-- User explicitly says "open council" / "formal convene"
-- Step 0 playbook shows same problem-class had a failed outcome last time — worth running the full process again
+### Inline mode output
+
+```
+[inline canonical check]
+Choice: <1 sentence>
+Canonical: <pattern + 🟢/🟡/🔴 + URL if applicable>
+Trap: <1 sentence>
+Going with: <choice + 1-line reason>
+```
+
+3-5 lines. No decision object created. No playbook write. Main chat only.
+
+### What changed from v1
+
+- Removed "revert < 1 day" stakes test — vibe-coding era makes time-to-revert meaningless (AI rewrites code in hours)
+- Removed "is it simple bug" filter — even simple bugs benefit from inline canonical lookup
+- Renamed from "early-exit gate" to "mode dispatch" — inline is now the default mode, not an abort
 
 ## Step 1 — Identify problem phase
 
