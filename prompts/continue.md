@@ -1,86 +1,86 @@
-# CONTINUE — 续会已有决策 prompt
+# CONTINUE — Continue an existing decision
 
-## 触发条件
+## Triggers
 
-- 用户消息或当前文件路径命中某个 status 为 open / reviewing 的 decision.md 的 topics
-- 或用户明确说"继续看 X 决策"、"再开一次智囊团"
+- User message or current file path matches the `topics` of a decision.md whose status is `open` / `reviewing`
+- Or user explicitly says "continue the X decision" / "reopen the council"
 
-## 严禁
+## Forbidden
 
-- 严禁从零重开会议、忽略已有 council-log.md
-- 严禁产生与已有结论矛盾但不说明的新建议
-- 严禁默默修改 decision.md 状态
+- Don't reopen from scratch, ignoring existing council-log.md
+- Don't produce new recommendations that contradict prior conclusions without explanation
+- Don't silently mutate decision.md status
 
-## Step 1：读决策对象（精简后只 2 文件）
+## Step 1 — Read the decision object (2 files post-simplification)
 
 ```
 Read decision.md
 Read council-log.md
-Read outcome.md (如存在)
-Read review-pending.md (如存在 — 远程 agent 写的)
+Read outcome.md (if exists)
+Read review-pending.md (if exists — written by remote review agent)
 ```
 
-进入工作记忆。引用时**显式说明出处**（"council-log.md 第一次召开 codex 红队第 4 视角说过 ..."）。
+Load into working memory. When citing, **state the source explicitly** ("in the first council session, codex red-team point 4 said ...").
 
-### Outcome write-back forcing function（强制检查）
+### Outcome write-back forcing function (mandatory check)
 
-读完后立即对 outcome 状态做判断（用 Bash `stat` 看文件 mtime）：
+After reading, immediately judge outcome state (use `stat` for mtime):
 
-| 状态 | 触发条件 | CONTINUE 主回复必须做 |
+| State | Trigger | CONTINUE response must do |
 |---|---|---|
-| ✅ outcome 新鲜 | outcome.md 存在且 mtime < 90 天 | 引用 outcome 数据 |
-| ⏰ outcome 缺失（短） | status=done 且 outcome.md 不存在，decision.md mtime < 30 天 | 温和提醒："上次决策跑完了吗？要不要补一下 outcome？" |
-| ⚠️ outcome 缺失（中） | status=done 且 outcome.md 不存在，decision.md mtime 30-90 天 | 明确提示："outcome 没回填，数据是不是已经出了但忘了写？" |
-| 🚨 outcome 缺失（长） | status=done 且 outcome.md 不存在，decision.md mtime > 90 天 | CONTINUE 主回复**开头**加 `🚨 outcome 90+ 天未回填，决策状态可能已经过时` |
-| ⏰ outcome 老化 | outcome.md 存在但 mtime > 180 天 | 提示"回看一次，验证 outcome 还成立" |
+| ✅ outcome fresh | outcome.md exists and mtime < 90 days | Cite outcome data |
+| ⏰ outcome missing (short) | status=done, outcome.md absent, decision.md mtime < 30 days | Gentle reminder: "Did the last decision finish running? Want to fill in outcome?" |
+| ⚠️ outcome missing (medium) | status=done, outcome.md absent, decision.md mtime 30-90 days | Explicit prompt: "Outcome wasn't written. Has data come out and just not been recorded?" |
+| 🚨 outcome missing (long) | status=done, outcome.md absent, decision.md mtime > 90 days | Open the CONTINUE response with `🚨 outcome not filled in 90+ days; decision state may be stale` |
+| ⏰ outcome aged | outcome.md exists but mtime > 180 days | Prompt: "Worth reviewing — verify the outcome still holds" |
 
-forcing function 的本质：把 outcome write-back 从"用户主动"变成"系统主动催"。code_playbook 复利的前提是 outcome 真的被回填。
+The point of the forcing function: shift outcome write-back from "user-initiated" to "system-prompted." code_playbook compounding only works if outcome actually gets written back.
 
-## Step 2：判断本次召开类型
+## Step 2 — Identify the type of this session
 
-询问或自己判断：
+Ask or self-identify:
 
-- **追问已有结论**：用户对某个视角想细聊 → 不开新会，针对性回答
-- **新信息需更新假设**：用户说"我跟合伙人聊了"、"benchmark 跑出来了" → 更新 assumptions.md 状态
-- **触发 kill criteria**：检查用户描述是否命中任何 K1-K6 → 如命中，进入 reversed 状态机，重开智囊团
-- **真实新视角加入**：用户说"我没想到 X" → 在 council-log.md 追加新一节，标注日期
+- **Drilling into an existing conclusion**: user wants to discuss one angle in more detail → no new session, just answer specifically
+- **New info that updates assumptions**: user says "I talked with my co-founder" / "the benchmark ran" → update assumptions.md state
+- **Kill criteria triggered**: check if user's description matches K1-K6 → if matched, enter reversed state machine, reopen council
+- **Genuine new angle**: user says "I didn't think about X" → append a new section in council-log.md, dated
 
-## Step 3：更新文件，不重写
+## Step 3 — Update files, don't rewrite
 
-所有修改都是**追加**或**显式更新**：
+All modifications are **append** or **explicit update**:
 
-- council-log.md：追加 `## YYYY-MM-DD 第 N 次召开` 段
-- assumptions.md：更新假设状态（待验证 → 已验证 / 已推翻），加注 "更新于 YYYY-MM-DD"
-- decision.md frontmatter：必要时更新 status
+- council-log.md: append `## YYYY-MM-DD Session N` section
+- assumptions.md: update assumption state (pending → verified / disproved), annotate "updated YYYY-MM-DD"
+- decision.md frontmatter: update status if needed
 
-## Step 3.5：Codex 红队（条件触发）
+## Step 3.5 — Codex red team (conditionally triggered)
 
-如果 `decision.md` frontmatter `red_team.codex == true` **且** 满足以下任一：
+If `decision.md` frontmatter has `red_team.codex == true` **and** any of the following:
 
-- 这次续会触发了 kill criteria（K1-K6 任一）
-- 关键假设有重大状态变化（A1-A3 任一从"待验证"变"已推翻"）
-- 主席裁决方向被修改
+- This session triggered a kill criterion (any of K1-K6)
+- A key assumption had a major state change (any of A1-A3 went from "pending" to "disproved")
+- Chairman's ruling direction got modified
 
-→ 执行 `prompts/codex_red_team.md`，输出追加到 council-log.md。
+→ Run `prompts/codex_red_team.md`, append output to council-log.md.
 
-不满足触发条件不要重跑 codex（避免无意义 cost）。
+If conditions aren't met, don't rerun codex (avoid wasted cost).
 
-## Step 4：用户档案同步（写入 code_playbook Section A）
+## Step 4 — User profile sync (write into code_playbook Section A)
 
-`user_decision_profile.md` 已合并入 `code_playbook.md` Section A。
+`user_decision_profile.md` is now merged into `code_playbook.md` Section A.
 
-如果本次续会发现用户的**新偏好 / 决策模式 / 反复盲区** → 追加到 `~/.claude/projects/<slug>/memory/code_playbook.md` 的 Section A（schema 见 SKILL.md "学习累积"）。
+If this session reveals **new preferences / decision patterns / recurring blind spots** of the user → append to `~/.claude/projects/<slug>/memory/code_playbook.md` Section A (schema in SKILL.md "Learning accumulation").
 
-什么都顺利、没新东西 → 不写。
+If nothing new — don't write.
 
-## Step 5：surface 给用户的初始消息格式
+## Step 5 — Surface message format to user
 
 ```
-📋 命中 decision: <title>
-   状态: <status>
-   上次召开: <date>
-   未验证假设: <count>
-   是否相关？(y / 不相关 / 暂不看)
+📋 Matched decision: <title>
+   Status: <status>
+   Last session: <date>
+   Unverified assumptions: <count>
+   Relevant? (y / not relevant / skip for now)
 ```
 
-用户回"不相关"则记录到 decision.md frontmatter 的 `false_match_count`，连续 3 次以上则降低这个 decision 的 topics 权重（移除最易误触的关键词）。
+If user says "not relevant," record to decision.md frontmatter `false_match_count`. After 3+ consecutive false matches, lower this decision's topic weight (remove the most easily-mismatched keywords).

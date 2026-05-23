@@ -47,6 +47,12 @@ Not Claude impersonating a master. Claude **retrieving the field's consensus and
 
 ---
 
+## Response language
+
+Match the user's input language. Chinese input → Chinese output. English input → English output. Don't mix languages within a single response.
+
+---
+
 ## Three confidence tiers (the most important rule)
 
 Every technical claim must be tagged with one tier:

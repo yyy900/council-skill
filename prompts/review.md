@@ -1,93 +1,93 @@
-# REVIEW — 远程 agent 回看 prompt
+# REVIEW — Remote agent look-back prompt
 
-## 调用方式
+## How it's invoked
 
-由 `/schedule` 在指定日期 cron-fire 一个新会话。新会话**没有任何对话上下文**，只有：
+`/schedule` cron-fires a new session on the specified date. The new session has **no conversation context**, only:
 
-- 调用参数：`<project-root>` `<decision-id>`
-- 文件系统访问
+- Arguments: `<project-root>` `<decision-id>`
+- Filesystem access
 
-所以这个 prompt 必须是 self-contained。
+So this prompt must be self-contained.
 
-## Step 1：定位决策对象
+## Step 1 — Locate the decision object
 
 ```bash
 DECISION_DIR="<project-root>/.claude/decisions/<decision-id>"
 ```
 
-如果不存在，检查全局：
+If it doesn't exist, check global:
 
 ```bash
 DECISION_DIR="$HOME/.claude/decisions/<decision-id>"
 ```
 
-仍不存在 → 这个 routine 已失效（用户可能删了决策目录），输出错误日志，不创建任何文件，结束。
+Still not found → this routine is dead (user may have deleted the decision directory). Log error, create no files, exit.
 
-## Step 2：读决策对象（精简后 2 文件）
+## Step 2 — Read the decision object (2 files post-simplification)
 
 ```
 Read decision.md
 Read council-log.md
-Read outcome.md (如存在)
+Read outcome.md (if exists)
 ```
 
-## Step 3：输出 review-pending.md
+## Step 3 — Write review-pending.md
 
-写入 `$DECISION_DIR/review-pending.md`：
+Write to `$DECISION_DIR/review-pending.md`:
 
 ```markdown
-# 第 N 次回看 — 远程 agent 初步分析
+# Review N — Remote agent preliminary analysis
 
-**生成时间**: <ISO 时间戳>
-**回看时点**: <预定的 review_dates 中哪一天>
-**决策状态**: <当前 status>
+**Generated**: <ISO timestamp>
+**Review point**: <which review_date this is>
+**Decision status**: <current status>
 
-## 假设状态盘点
+## Assumption state inventory
 
-[逐条列出 assumptions.md 中每个假设]
-- A1 <内容>: 状态待你更新（agent 无法替你验证产品形态对齐这种事）
-- A2 <内容>: agent 提议的检查方式 = ...
+[List every assumption from assumptions.md]
+- A1 <content>: state pending your update (agent can't verify things like "product form alignment")
+- A2 <content>: agent's proposed check = ...
 - ...
 
-## Kill criteria 状态盘点
+## Kill criteria state inventory
 
-[逐条列出 kill-criteria.md 中每条]
-- K1 <内容>: agent 无法直接判断，请回答 yes/no/未知
+[List every kill criterion from kill-criteria.md]
+- K1 <content>: agent can't judge directly, please answer yes/no/unknown
 - ...
 
-## Agent 的判断
+## Agent's judgments
 
-如果有任何**可独立判断**的项（比如：你的代码库里 commits、你的 outcome.md 已经写了的内容、文件系统状态），agent 在这里给出判断。
+For anything **agent can judge independently** (e.g. codebase commits, content already written in outcome.md, filesystem state), agent gives judgment here.
 
-如果完全依赖人类输入（绝大多数假设和 kill criteria 都是这样），明确说"agent 无法判断，等待用户回答"。
+If completely dependent on human input (most assumptions and kill criteria are), say clearly "agent can't judge, waiting on user".
 
-**严禁**幻觉判断：不要假设 benchmark 跑过了、不要假设合伙人已对齐。只判断你能从文件系统直接读出来的事实。
+**Forbidden**: hallucinated judgments. Don't assume benchmarks ran, don't assume co-founder aligned. Only judge facts readable directly from the filesystem.
 
-## 给用户的问题
+## Questions for the user
 
-[列出用户必须回答的具体问题，每条 yes/no 或具体数据]
+[List specific questions the user must answer, each yes/no or specific data]
 
-回答方式：直接编辑此文件，回答完后告诉 Claude "审完了"，Claude 会把回答整合到 council-log.md 并更新 decision.md 状态。
+How to respond: edit this file directly, answer the questions, then tell Claude "review done" — Claude will integrate answers into council-log.md and update decision.md status.
 
-## 状态机建议
+## Status machine suggestion
 
-基于以上盘点，agent 建议 decision.md status 改为：
-- `reviewing` — 正在等用户填写本文件
-- 或保持当前状态如果用户尚未回答
+Based on this inventory, agent suggests decision.md status be set to:
+- `reviewing` — currently waiting for user to fill this file
+- or keep current status if user hasn't responded yet
 ```
 
-## Step 4：不要做的事
+## Step 4 — What NOT to do
 
-- 不要修改 decision.md / assumptions.md / kill-criteria.md（写权限交给用户主对话）
-- 不要发起新一轮智囊团（没有对话上下文，新视角必然是泛泛建议）
-- 不要 PushNotification 干扰用户（让 surface 在用户主动靠近话题时发生）
+- Don't modify decision.md / assumptions.md / kill-criteria.md (write permissions belong to the user's main chat)
+- Don't open a new council round (no conversation context — new angles would just be generic advice)
+- Don't PushNotification to interrupt the user (let surface happen when user organically approaches the topic)
 
-## Step 5：可选 — push notification
+## Step 5 — Optional: push notification
 
-如果用户在 `~/.claude/council-config.yml` 里启用了 push（默认关闭），发一条简短通知：
+If user enabled push in `~/.claude/council-config.yml` (default off), send one short notification:
 
 ```
-📋 决策回看就绪：<title>。下次进入 oral-trainer 项目时会主动 surface。
+📋 Decision review ready: <title>. Will surface next time you enter the project.
 ```
 
-否则静默落盘，等用户主动靠近话题。
+Otherwise drop silently, wait for user to organically approach the topic.
